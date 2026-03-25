@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyi
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Reflex / Pynecone
+.reflex/
+
+# SQLite / DB
+*.db
+*.sqlite
+*.sqlite3
+experiments/runs/
+
+# MLX / Apple ML
+.experiments/
+.mlx/
+
+# External repos (cloned)
+external/*/
+!external/.gitkeep
+
+# States & Web ( Reflex build output)
+.states
+.web
+
+# Assets (generated)
+assets/external/
+
+# Data (can be regenerated)
+data/shakespeare.txt
+data/
+
+# Config with secrets (DO NOT commit actual .env files!)
+# .env.local
+# .env.production
+
+# OS
+.DS_Store
+*.log

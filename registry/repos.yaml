@@ -1,0 +1,65 @@
+repos:
+  exo:
+    url: https://github.com/exo-explore/exo
+    description: "Distributed LLM inference across Apple Silicon devices via Thunderbolt/network"
+    stack_layer: clustering
+    capabilities:
+      - distributed_inference
+      - device_discovery
+      - thunderbolt_rdma
+      - model_sharding
+    min_memory_gb: 16
+    models:
+      - "LLaMA 3 70B (sharded)"
+      - "Mixtral 8x22B (sharded)"
+      - "Any model — splits across devices"
+    maintainer: "Alex Cheema (@Alexintosh)"
+
+  flash-moe:
+    url: https://github.com/Anemll/Flash-MoE
+    description: "Custom Metal kernel engine for streaming massive MoE models from SSD"
+    stack_layer: inference_engine
+    capabilities:
+      - ssd_expert_streaming
+      - metal_kernels
+      - moe_inference
+      - flash_attention
+      - morton_order_gemm
+    min_memory_gb: 48
+    models:
+      - "Qwen3.5-397B"
+      - "DeepSeek-V3-671B"
+    maintainer: "@danveloper / @anemll"
+
+  mlx-vlm:
+    url: https://github.com/Blaizzy/mlx-vlm
+    description: "Vision-language models on Apple Silicon via MLX"
+    stack_layer: multimodal
+    capabilities:
+      - vision_language
+      - mlx_native
+      - image_understanding
+      - swift_integration
+    min_memory_gb: 8
+    models:
+      - "LLaVA"
+      - "Qwen-VL"
+      - "Phi-3-vision"
+      - "Pixtral"
+    maintainer: "Prince Canuma (@Prince_Canuma)"
+
+  mlx-examples:
+    url: https://github.com/ml-explore/mlx-examples
+    description: "Official MLX example models — training and inference reference implementations"
+    stack_layer: training
+    capabilities:
+      - transformer_training
+      - lora_finetuning
+      - text_generation
+      - reference_implementations
+    min_memory_gb: 8
+    models:
+      - "GPT-2 (all sizes)"
+      - "LLaMA (all sizes)"
+      - "Mistral"
+    maintainer: "Apple MLX team"
