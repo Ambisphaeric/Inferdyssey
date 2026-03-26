@@ -26,6 +26,77 @@ def search_result_row(result: SearchResult) -> rx.Component:
     )
 
 
+def zvec_controls() -> rx.Component:
+    """Search mode toggle and zvec index controls."""
+    return rx.vstack(
+        # Search mode toggle
+        rx.hstack(
+            rx.text("Search mode:", size="1", color="var(--gray-9)"),
+            rx.segmented_control.root(
+                rx.segmented_control.item("Keyword", value="grep"),
+                rx.segmented_control.item("Semantic", value="semantic"),
+                value=AppState.search_mode,
+                on_change=AppState.set_search_mode,
+                size="1",
+            ),
+            spacing="2",
+            align="center",
+        ),
+        # zvec index status (only in semantic mode)
+        rx.cond(
+            AppState.search_mode == "semantic",
+            rx.hstack(
+                rx.cond(
+                    AppState.zvec_status == "ready",
+                    rx.hstack(
+                        rx.badge(
+                            rx.icon("database", size=12),
+                            AppState.zvec_chunk_count.to(str),
+                            " chunks indexed",
+                            variant="surface",
+                            color_scheme="green",
+                            size="1",
+                        ),
+                        rx.button(
+                            rx.icon("refresh-cw", size=12),
+                            "Rebuild",
+                            variant="outline",
+                            size="1",
+                            on_click=AppState.build_zvec_index,
+                            loading=AppState.zvec_building,
+                        ),
+                        spacing="2",
+                        align="center",
+                    ),
+                    rx.hstack(
+                        rx.cond(
+                            AppState.zvec_building,
+                            rx.hstack(
+                                rx.spinner(size="1"),
+                                rx.text("Building index...", size="1", color="var(--gray-9)"),
+                                spacing="2",
+                                align="center",
+                            ),
+                            rx.button(
+                                rx.icon("database", size=12),
+                                "Build Index",
+                                size="1",
+                                on_click=AppState.build_zvec_index,
+                            ),
+                        ),
+                        spacing="2",
+                        align="center",
+                    ),
+                ),
+                spacing="2",
+                align="center",
+            ),
+        ),
+        spacing="2",
+        width="100%",
+    )
+
+
 def explorer_page() -> rx.Component:
     return layout(
         rx.vstack(
@@ -35,6 +106,9 @@ def explorer_page() -> rx.Component:
                 size="2",
                 color="var(--gray-9)",
             ),
+
+            # Search mode controls
+            zvec_controls(),
 
             # Search bar
             rx.hstack(

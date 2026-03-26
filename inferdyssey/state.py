@@ -55,6 +55,10 @@ class AppState(rx.State):
     search_query: str = ""
     search_results: list[SearchResult] = []
     searching: bool = False
+    search_mode: str = "grep"  # "grep" or "semantic"
+    zvec_status: str = ""  # "ready", "building", "not_built"
+    zvec_chunk_count: int = 0
+    zvec_building: bool = False
 
     # --- Lab state ---
     hypothesis: str = ""
@@ -82,6 +86,8 @@ class AppState(rx.State):
             self._load_repos()
         if not self.models_loaded:
             self._load_models()
+        if not self.zvec_status:
+            self.check_zvec_status()
 
     def _detect_hardware(self):
         from core.hardware import detect
@@ -199,9 +205,9 @@ class AppState(rx.State):
             chat.title = text[:50] + ("..." if len(text) > 50 else "")
 
         self.chat_loading = True
-        return AppState._get_ai_response
+        return type(self).get_ai_response
 
-    def _get_ai_response(self):
+    def get_ai_response(self):
         chat = None
         for c in self.chats:
             if c.id == self.active_chat_id:
@@ -230,12 +236,28 @@ class AppState(rx.State):
         for r in repos:
             context += f"- {r.name} ({r.stack_layer}): {r.description} by {r.maintainer}\n"
 
+        # RAG: pull relevant code from zvec if index is built
+        code_context = ""
+        try:
+            from core.zvec_index import ZvecIndex
+            idx = ZvecIndex()
+            if idx.status().get("built"):
+                last_msg = chat.messages[-1].content if chat.messages else ""
+                hits = idx.search(last_msg, top_k=5)
+                if hits:
+                    code_context = "\n\n## Relevant code from cloned repos:\n"
+                    for h in hits:
+                        code_context += f"\n### {h['repo']}/{h['file']}:{h['start_line']}\n```\n{h['text'][:500]}\n```\n"
+        except Exception:
+            pass
+
         system = (
             "You are InferDyssey's research assistant. Help users understand and contribute to "
             "the Apple Silicon LLM inference ecosystem. Key people: Alex Cheema (@Alexintosh/EXO), "
             "@danveloper/@anemll (Flash-MoE), Prince Canuma (@Prince_Canuma/mlx-vlm), @danpacary. "
             "Be concrete — reference specific repos, techniques, files. "
-            f"\n\n{context}"
+            "When code context is provided, use it to give specific, grounded answers."
+            f"\n\n{context}{code_context}"
         )
 
         messages = [{"role": "system", "content": system}]
@@ -261,13 +283,66 @@ class AppState(rx.State):
     def set_search_query(self, value: str):
         self.search_query = value
 
+    def set_search_mode(self, value: str | list[str]):
+        if isinstance(value, list):
+            self.search_mode = value[0] if value else "grep"
+        else:
+            self.search_mode = value
+
+    def check_zvec_status(self):
+        from core.zvec_index import ZvecIndex
+        status = ZvecIndex().status()
+        if status.get("built"):
+            self.zvec_status = "ready"
+            self.zvec_chunk_count = status.get("total_chunks", 0)
+        else:
+            self.zvec_status = "not_built"
+
+    def build_zvec_index(self):
+        self.zvec_building = True
+        self.zvec_status = "building"
+        return type(self).do_build_zvec
+
+    def do_build_zvec(self):
+        from core.zvec_index import ZvecIndex
+        try:
+            idx = ZvecIndex()
+            result = idx.build()
+            self.zvec_chunk_count = result.get("chunks", 0)
+            self.zvec_status = "ready"
+        except Exception as e:
+            self.zvec_status = f"error: {e}"
+        self.zvec_building = False
+
     def run_search(self):
         if not self.search_query.strip():
             return
         self.searching = True
-        return AppState._do_search
+        if self.search_mode == "semantic":
+            return type(self).do_semantic_search
+        return type(self).do_grep_search
 
-    def _do_search(self):
+    def do_semantic_search(self):
+        from core.zvec_index import ZvecIndex
+        try:
+            idx = ZvecIndex()
+            hits = idx.search(self.search_query.strip(), top_k=30)
+            self.search_results = [
+                SearchResult(
+                    file=h["file"],
+                    line=h["start_line"],
+                    text="\n".join(h["text"].split("\n")[:5]),
+                    repo=h["repo"],
+                )
+                for h in hits
+            ]
+        except Exception as e:
+            self.search_results = [SearchResult(
+                file="", line=0, text=f"Search error: {e}", repo="error",
+            )]
+        self.searching = False
+
+    def do_grep_search(self):
         from pathlib import Path
         query = self.search_query.strip()
         results = []
@@ -280,7 +355,7 @@ class AppState(rx.State):
 
         # Use ripgrep if available, else fall back to grep
         try:
-            cmd = ["rg", "--no-heading", "-n", "--max-count", "50", "-t", "py", "-t", "c", "-t", "md", query, str(external)]
+            cmd = ["rg", "--no-heading", "-n", "--no-ignore", "--max-count", "50", "-t", "py", "-t", "c", "-t", "md", query, str(external)]
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             lines = proc.stdout.strip().split("\n") if proc.stdout.strip() else []
         except FileNotFoundError:
@@ -331,9 +406,9 @@ class AppState(rx.State):
         self.lab_running = True
         self.lab_status = "Running baseline..."
         self.lab_results = []
-        return AppState._do_baseline
+        return type(self).do_baseline
 
-    def _do_baseline(self):
+    def do_baseline(self):
         from core.trainer import train
         from core import benchmark
 

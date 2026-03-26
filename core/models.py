@@ -12,10 +12,8 @@ MODELS_CACHE = Path("experiments/.models_cache.json")
 FAVORITES = [
     "minimax/minimax-m2.5",
     "x-ai/grok-4.1-fast",
-    "google/gemini-2.5-pro",
-    "google/gemini-2.0-flash-001",
-    "google/gemini-2.0-flash-lite-001",
-    "anthropic/claude-opus-4",
+    "google/gemini-3.1-pro-preview",
+    "anthropic/claude-opus-4.6"
 ]
 
 
